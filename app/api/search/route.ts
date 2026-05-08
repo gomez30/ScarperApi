@@ -18,10 +18,15 @@ interface ProviderResults {
   error?: string;
 }
 
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
+const isRedisConfigured =
+  Boolean(process.env.UPSTASH_REDIS_REST_URL) &&
+  Boolean(process.env.UPSTASH_REDIS_REST_TOKEN);
+const redis = isRedisConfigured
+  ? new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL!,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+    })
+  : null;
 
 async function searchProvider(
   providerName: string,
@@ -116,9 +121,9 @@ export async function GET(request: NextRequest) {
 
     const cacheKey = `global-search:${query.toLowerCase()}`;
 
-    if (useCache) {
+    if (useCache && isRedisConfigured) {
       try {
-        const cachedResults = await redis.get(cacheKey);
+        const cachedResults = await redis?.get(cacheKey);
         if (cachedResults) {
           console.log(`Cache hit for query: ${query}`);
           return NextResponse.json({
@@ -171,9 +176,9 @@ export async function GET(request: NextRequest) {
     };
 
     // Cache results for 1 hour (3600 seconds)
-    if (useCache) {
+    if (useCache && isRedisConfigured) {
       try {
-        await redis.set(cacheKey, response, { ex: 3600 });
+        await redis?.set(cacheKey, response, { ex: 3600 });
         console.log(`Cached results for query: ${query}`);
       } catch (cacheError) {
         console.error("Cache write error:", cacheError);

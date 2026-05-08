@@ -1,9 +1,8 @@
 import { Redis } from "@upstash/redis";
 
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
+const redisUrl = process.env.UPSTASH_REDIS_REST_URL;
+const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+const redis = redisUrl && redisToken ? new Redis({ url: redisUrl, token: redisToken }) : null;
 
 const PROVIDER_CACHE_PREFIX = "user:providers:";
 
@@ -28,6 +27,10 @@ export type ProviderName = typeof ALL_PROVIDERS[number];
 
 export async function getUserEnabledProviders(userId: string): Promise<ProviderName[]> {
   const cacheKey = `${PROVIDER_CACHE_PREFIX}${userId}`;
+
+  if (!redis) {
+    return getDefaultProviders();
+  }
   
   try {
     const cached = await redis.get<ProviderName[]>(cacheKey);
@@ -54,6 +57,10 @@ export async function updateUserProviders(
   providers: ProviderName[]
 ): Promise<void> {
   const cacheKey = `${PROVIDER_CACHE_PREFIX}${userId}`;
+
+  if (!redis) {
+    return;
+  }
   
   try {
     // Cache persists until user explicitly changes their provider settings
@@ -65,6 +72,10 @@ export async function updateUserProviders(
 
 export async function invalidateUserProviderCache(userId: string): Promise<void> {
   const cacheKey = `${PROVIDER_CACHE_PREFIX}${userId}`;
+
+  if (!redis) {
+    return;
+  }
   
   try {
     await redis.del(cacheKey);

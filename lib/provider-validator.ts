@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateApiKey } from "./api-auth";
-import { isProviderEnabled } from "./provider-cache";
 
 export async function validateProviderAccess(
   request: NextRequest,
-  providerName: string
+  _providerName: string
 ): Promise<{ valid: boolean; error?: string; userId?: string }> {
   const validation = await validateApiKey(request);
   
@@ -19,19 +18,6 @@ export async function validateProviderAccess(
     return {
       valid: false,
       error: "User ID not found",
-    };
-  }
-
-  const isEnabled = await isProviderEnabled(
-    validation.keyData.userId,
-    providerName
-  );
-
-  if (!isEnabled) {
-    return {
-      valid: false,
-      error: `Provider '${providerName}' is not enabled for this user`,
-      userId: validation.keyData.userId,
     };
   }
 

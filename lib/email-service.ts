@@ -1,6 +1,19 @@
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let resendClient: Resend | null = null;
+
+function getResendClient() {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    return null;
+  }
+
+  if (!resendClient) {
+    resendClient = new Resend(apiKey);
+  }
+
+  return resendClient;
+}
 
 // Email templates with nice HTML styling
 const getEmailTemplate = (type: 'login' | 'quota-warning', data: any) => {
@@ -154,6 +167,12 @@ export async function sendLoginNotification(data: {
   requestQuota?: number;
 }) {
   try {
+    const resend = getResendClient();
+    if (!resend) {
+      console.warn('RESEND_API_KEY is not set; skipping login notification email.');
+      return { success: false, error: 'RESEND_API_KEY is not set' };
+    }
+
     const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`;
     
     const { data: emailData, error } = await resend.emails.send({
@@ -185,6 +204,12 @@ export async function sendQuotaWarningEmail(data: {
   quotaResetDate?: string;
 }) {
   try {
+    const resend = getResendClient();
+    if (!resend) {
+      console.warn('RESEND_API_KEY is not set; skipping quota warning email.');
+      return { success: false, error: 'RESEND_API_KEY is not set' };
+    }
+
     const remainingCalls = data.requestQuota - data.requestCount;
     const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`;
     
